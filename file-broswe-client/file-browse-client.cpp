@@ -54,7 +54,6 @@ pplx::task<http_response> make_task_request(
 				uri += std::to_wstring(page);
 			}
 		}
-
 	
 		return client.request(mtd, uri);
 	}
@@ -95,7 +94,7 @@ void make_request(
 			wcout << e.what() << endl;
 		}
 	})
-		.wait();
+	.wait();
 }
 
 
@@ -124,9 +123,9 @@ void make_request_file(
 			})
 			.then([=](size_t)  // Close the file stream.
 			{
-				//return fileStream->close();
 				fileStream->close();
-			});
+			})
+				.wait();
 		}
 		catch (exception e)
 		{
@@ -136,28 +135,6 @@ void make_request_file(
 }
 
 
-
-//		if (response.status_code() == status_codes::OK)
-//		{
-//			return response.extract_json();
-//		}
-//	return pplx::task_from_result(json::value());
-//})
-//		.then([](pplx::task<json::value> previousTask)
-//{
-//	try
-//	{
-//		display_json(previousTask.get(), L"R: ");
-//	}
-//	catch (http_exception const & e)
-//	{
-//		wcout << e.what() << endl;
-//	}
-//})
-//	.wait();
-//}
-
-
 int main()
 {
 	http_client client(U("http://localhost"));
@@ -165,14 +142,16 @@ int main()
 
 	auto nullvalue = json::value::null();
 
-	//wcout << L"\nGET (get all values)\n";
-	//make_request(client, methods::GET, nullvalue, L"");
-	//make_request(client, methods::GET, nullvalue, L"", 5, 0);
-	//make_request(client, methods::GET, nullvalue, L"", 5, 1);
-	//make_request(client, methods::GET, nullvalue, L"", 5, 2);
+	make_request(client, methods::GET, nullvalue, L"");
+	make_request(client, methods::GET, nullvalue, L"", 5, 0);
+	make_request(client, methods::GET, nullvalue, L"", 5, 1);
+	make_request(client, methods::GET, nullvalue, L"", 5, 2);
 
-	//make_request(client, methods::GET, nullvalue, L"1234");
-	make_request_file(client, methods::GET, nullvalue, U("Crockett_mp3"));
+	std::wstring filename;
+	std::cout << "Enter a file name: ";
+	std::getline(std::wcin, filename);
+
+	make_request_file(client, methods::GET, nullvalue, filename);
 
 	wcout << L"\nEnter a key, any key...";
 	std::cin.ignore();

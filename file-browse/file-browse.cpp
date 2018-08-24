@@ -52,13 +52,9 @@ void handle_get(http_request request)
 		// return a file
 		id = strs[2];
 
-
-
 		ucout << request.to_string() << endl;
 
 		auto paths = http::uri::split_path(http::uri::decode(request.relative_uri().path()));
-
-//		request.relative_uri().path();
 
 		wstring Path = L"C:\\Work\\file-browse\\files\\";
 		Path += id;
@@ -85,10 +81,6 @@ void handle_get(http_request request)
 		});
 
 		return;
-
-		//auto answer = json::value::object();
-		//answer[L"ReturnValue"] = json::value::string(L"File Contents");
-		//request.reply(status_codes::OK, answer);
 	}
 	else
 	{
@@ -148,19 +140,6 @@ void handle_get(http_request request)
 		answer[L"ReturnValue"] = json::value::string(files);
 		request.reply(status_codes::OK, answer);
 	}
-
-	
-	//auto answer = json::value::object();
-
-	//for (auto const & p : dictionary)
-	//{
-	//	answer[p.first] = json::value::string(p.second);
-	//}
-
-	//display_json(json::value::null(), L"R: ");
-	//display_json(answer, L"S: ");
-
-	//request.reply(status_codes::OK, answer);
 }
 
 void handle_request(

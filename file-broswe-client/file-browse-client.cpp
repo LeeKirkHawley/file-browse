@@ -14,9 +14,6 @@ using namespace web::http;
 using namespace web::http::client;
 using namespace std;
 
-// yuck, find a way to make this available without being global please
-auto fileStream = std::make_shared<concurrency::streams::ostream>();
-
 
 void display_json(
 	json::value const & jvalue,
@@ -27,53 +24,47 @@ void display_json(
 
 pplx::task<http_response> make_task_request(
 	http_client & client,
-	method mtd,
-	json::value const & jvalue,
 	wstring id = L"",
 	int limit = -1,
 	int page = 0)
 {
-	if (mtd == methods::GET)
-	{
-		wstring uri = L"/restdemo";
+	wstring uri = L"/restdemo";
 		
-		if (id.length() > 0)  // file contents
-		{
-			uri += L"/";
-			uri += id;
-
-		}
-		else  // file list
-		{
-			if (limit != -1)
-			{
-				// ?limit=5&start=2
-				uri += L"?limit=";
-				uri += std::to_wstring(limit);
-				uri += L"&start=";
-				uri += std::to_wstring(page);
-			}
-		}
-	
-		return client.request(mtd, uri);
+	if (limit != -1)
+	{
+		// ?limit=5&start=2
+		uri += L"?limit=";
+		uri += std::to_wstring(limit);
+		uri += L"&start=";
+		uri += std::to_wstring(page);
 	}
-	else
-		return client.request(mtd, L"/restdemo", jvalue);
-
+	
+	return client.request(methods::GET, uri);
 }
 
 
-// NOTE since we're now handling the file gets in another function, 
-// we can get rid of te file name (id) arg
-void make_request(
+pplx::task<http_response> make_task_request_file(
 	http_client & client,
-	method mtd,
-	json::value const & jvalue,
-	//wstring id = L"",
+	concurrency::streams::ostream stream,
+	wstring id = L"",
 	int limit = -1,
 	int page = 0)
 {
-	make_task_request(client, mtd, jvalue, U(""), limit, page)
+	wstring uri = L"/restdemo";
+
+	uri += L"/";
+	uri += id;
+
+	return client.request(methods::GET, uri);
+}
+
+void make_request(
+	http_client & client,
+	json::value const & jvalue,
+	int limit = -1,
+	int page = 0)
+{
+	make_task_request(client, U(""), limit, page)
 		.then([](http_response response)
 	{
 		std::wcout << L"\nGot a response.\n";
@@ -100,7 +91,6 @@ void make_request(
 
 void make_request_file(
 	http_client & client,
-	method mtd,
 	json::value const & jvalue,
 	const wstring id = L"",
 	int limit = -1,
@@ -112,17 +102,15 @@ void make_request_file(
 	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(OutPath)
 		.then([=](concurrency::streams::ostream stream)
 	{
-		*fileStream = stream;
-
 		try
 		{
-			make_task_request((http_client&)client, mtd, jvalue, id, limit, page).then([](http_response response)
+			make_task_request_file((http_client&)client, stream, id, limit, page).then([stream](http_response response)
 			{
-				return response.body().read_to_end(fileStream->streambuf());
+				return response.body().read_to_end(stream.streambuf());
 			})
 			.then([=](size_t)  // Close the file stream.
 			{
-				fileStream->close();
+				stream.close();
 			})
 			.wait();
 
@@ -141,16 +129,17 @@ int main()
 
 	auto nullvalue = json::value::null();
 
-	make_request(client, methods::GET, nullvalue);
-	make_request(client, methods::GET, nullvalue, 5, 0);
-	make_request(client, methods::GET, nullvalue, 5, 1);
-	make_request(client, methods::GET, nullvalue, 5, 2);
+	make_request(client, nullvalue);
+	make_request(client, nullvalue, 5, 0);
+	make_request(client, nullvalue, 5, 1);
+	make_request(client, nullvalue, 5, 2);
 
 	std::wstring filename;
 	std::cout << "Enter a file name: ";
 	std::getline(std::wcin, filename);
 
-	make_request_file(client, methods::GET, nullvalue, filename);
+	if(filename.length() > 0)
+		make_request_file(client, nullvalue, filename);
 
 	wcout << L"\nEnter a key, any key...";
 	std::cin.ignore();

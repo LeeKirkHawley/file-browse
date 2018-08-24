@@ -128,7 +128,7 @@ void handle_get(http_request request)
 					}
 
 					counter++;
-					if (limit != -1 && counter >= firstitem + limit)
+					if (limit != -1 && counter >= firstitem + limit)  // if we're paginating and we have reached the limit
 						break;  
 				}
 

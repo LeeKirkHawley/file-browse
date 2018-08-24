@@ -7,7 +7,6 @@
 #include <cpprest/json.h>
 #include <cpprest/filestream.h>
 
-
 #pragma comment(lib, "cpprest_2_10d")
 
 using namespace web;
@@ -15,6 +14,7 @@ using namespace web::http;
 using namespace web::http::client;
 using namespace std;
 
+// yuck, find a way to make this available without being global please
 auto fileStream = std::make_shared<concurrency::streams::ostream>();
 
 
@@ -63,16 +63,17 @@ pplx::task<http_response> make_task_request(
 }
 
 
-
+// NOTE since we're now handling the file gets in another function, 
+// we can get rid of te file name (id) arg
 void make_request(
 	http_client & client,
 	method mtd,
 	json::value const & jvalue,
-	wstring id = L"",
+	//wstring id = L"",
 	int limit = -1,
 	int page = 0)
 {
-	make_task_request(client, mtd, jvalue, id, limit, page)
+	make_task_request(client, mtd, jvalue, U(""), limit, page)
 		.then([](http_response response)
 	{
 		std::wcout << L"\nGot a response.\n";
@@ -96,8 +97,6 @@ void make_request(
 	})
 	.wait();
 }
-
-
 
 void make_request_file(
 	http_client & client,
@@ -125,7 +124,9 @@ void make_request_file(
 			{
 				fileStream->close();
 			})
-				.wait();
+			.wait();
+
+			wcout << U("Finished transferring file.");
 		}
 		catch (exception e)
 		{
@@ -134,18 +135,16 @@ void make_request_file(
 	});
 }
 
-
 int main()
 {
 	http_client client(U("http://localhost"));
 
-
 	auto nullvalue = json::value::null();
 
-	make_request(client, methods::GET, nullvalue, L"");
-	make_request(client, methods::GET, nullvalue, L"", 5, 0);
-	make_request(client, methods::GET, nullvalue, L"", 5, 1);
-	make_request(client, methods::GET, nullvalue, L"", 5, 2);
+	make_request(client, methods::GET, nullvalue);
+	make_request(client, methods::GET, nullvalue, 5, 0);
+	make_request(client, methods::GET, nullvalue, 5, 1);
+	make_request(client, methods::GET, nullvalue, 5, 2);
 
 	std::wstring filename;
 	std::cout << "Enter a file name: ";

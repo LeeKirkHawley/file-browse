@@ -1,3 +1,4 @@
+// started from https://mariusbancila.ro/blog/2017/11/19/revisited-full-fledged-client-server-example-with-c-rest-sdk-2-10/
 // file-browse.cpp : Defines the entry point for the console application.
 //
 
@@ -9,6 +10,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <map>
 #include <boost/algorithm/string.hpp>
 #include <cpprest/filestream.h>
 
@@ -47,6 +49,7 @@ void handle_get(http_request request)
 	wstring id = L"";
 	std::vector<std::wstring> strs;
 	boost::split(strs, uri, boost::is_any_of("/"));
+	
 	if (strs.size() > 2)
 	{
 		// return a file
@@ -86,9 +89,10 @@ void handle_get(http_request request)
 	{
 		// return file list
 	
-		// ?limit=5&start=2
+		// ?limit=5&start=2&sorted=1
 		int limit = -1;
 		int start = 0;
+		int sorted = 1;
 
 		std::vector<std::wstring>  paginationsplit;
 		boost::split(paginationsplit, uri, boost::is_any_of("?"));
@@ -99,46 +103,115 @@ void handle_get(http_request request)
 
 			limit = stoi(paginationvars[0].substr(6).c_str());
 			start = stoi(paginationvars[1].substr(6).c_str());
+			sorted = stoi(paginationvars[2].substr(7).c_str());
 		}
 		
-		wstring files = L"";
-
-		WIN32_FIND_DATA data;
-		HANDLE hFind = FindFirstFile(L"C:\\Work\\file-browse\\files\\*.*", &data);      // DIRECTORY
-
-		int counter = 0;
-		int firstitem = 0;
-		if (limit != -1)  // paginated please
+		if (!sorted)
 		{
-			firstitem = start * limit;
-		}
+			wstring files = L"";
 
-		if (hFind != INVALID_HANDLE_VALUE) 
-		{
-			do 
+			WIN32_FIND_DATA data;
+			HANDLE hFind = FindFirstFile(L"C:\\Work\\file-browse\\files\\*.*", &data);      // DIRECTORY
+
+			int counter = 0;
+			int firstitem = 0;
+			if (limit != -1)  // paginated please
 			{
-				if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L".."))
-				{
-					if (counter >= firstitem)
-					{
-						if (files.length())
-							files += L",";
+				firstitem = start * limit;
+			}
 
-						files += data.cFileName;
+			if (hFind != INVALID_HANDLE_VALUE)
+			{
+				do
+				{
+					if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L".."))
+					{
+						if (counter >= firstitem)
+						{
+							if (files.length())
+								files += L",";
+
+							files += data.cFileName;
+						}
+
+						counter++;
+						if (limit != -1 && counter >= firstitem + limit)  // if we're paginating and we have reached the limit
+							break;
 					}
 
-					counter++;
-					if (limit != -1 && counter >= firstitem + limit)  // if we're paginating and we have reached the limit
-						break;  
+				} while (FindNextFile(hFind, &data));
+				FindClose(hFind);
+			}
+
+			auto answer = json::value::object();
+			answer[L"ReturnValue"] = json::value::string(files);
+			request.reply(status_codes::OK, answer);
+		}
+		else // sort it
+		{
+			struct cmpByNumber : public std::binary_function<int, int, bool> {
+				bool operator()(const int a, const int b) const {
+					return a < b;
+				}
+			};
+			typedef map<int, wstring, cmpByNumber> filemaptype;
+			filemaptype filemap;
+			
+			wstring files = L"";
+
+			WIN32_FIND_DATA data;
+			HANDLE hFind = FindFirstFile(L"C:\\Work\\file-browse\\files\\*.*", &data);      // DIRECTORY
+			if (hFind != INVALID_HANDLE_VALUE)
+			{
+				do
+				{
+					if (wcscmp(data.cFileName, L".") && wcscmp(data.cFileName, L".."))
+					{
+						int filenumber;
+						try
+						{
+							filenumber = std::stoi(data.cFileName);
+						}
+						catch (...)
+						{
+							continue;
+						}
+						wstring s = data.cFileName;
+						filemap[filenumber] = s;
+					}
+
+				} while (FindNextFile(hFind, &data));
+
+				FindClose(hFind);
+			}
+
+			int counter = 0;
+			int firstitem = 0;
+			if (limit != -1)  // paginated please
+			{
+				firstitem = start * limit;
+			}
+
+			for (map<int, wstring, cmpByNumber>::const_iterator it = filemap.begin(), end = filemap.end(); it != end; ++it)
+			{
+				if (counter >= firstitem)
+				{
+					if (files.length())
+						files += L",";
+
+					files += it->second;
 				}
 
-			} while (FindNextFile(hFind, &data));
-			FindClose(hFind);
-		}
+				counter++;
+				if (limit != -1 && counter >= firstitem + limit)  // if we're paginating and we have reached the limit
+					break;
+			}
 
-		auto answer = json::value::object();
-		answer[L"ReturnValue"] = json::value::string(files);
-		request.reply(status_codes::OK, answer);
+			auto answer = json::value::object();
+			answer[L"ReturnValue"] = json::value::string(files);
+			request.reply(status_codes::OK, answer);
+
+		}
 	}
 }
 

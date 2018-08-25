@@ -24,19 +24,25 @@ void display_json(
 
 pplx::task<http_response> make_task_request(
 	http_client & client,
-	wstring id = L"",
-	int limit = -1,
-	int page = 0)
+	wstring id,
+	int limit,
+	int page,
+	bool sorted
+	)
 {
 	wstring uri = L"/restdemo";
 		
-	if (limit != -1)
+	//if (limit != -1)
 	{
-		// ?limit=5&start=2
+		// ?limit=5&start=2&sorted=1
 		uri += L"?limit=";
 		uri += std::to_wstring(limit);
 		uri += L"&start=";
 		uri += std::to_wstring(page);
+		if (sorted == true)
+			uri += L"&sorted=1";
+		else
+			uri += L"&sorted=0";
 	}
 	
 	return client.request(methods::GET, uri);
@@ -62,9 +68,11 @@ void make_request(
 	http_client & client,
 	json::value const & jvalue,
 	int limit = -1,
-	int page = 0)
+	int page = 0,
+	bool sorted = true
+	)
 {
-	make_task_request(client, U(""), limit, page)
+	make_task_request(client, U(""), limit, page, sorted)
 		.then([](http_response response)
 	{
 		std::wcout << L"\nGot a response.\n";
@@ -129,10 +137,12 @@ int main()
 
 	auto nullvalue = json::value::null();
 
-	make_request(client, nullvalue);
-	make_request(client, nullvalue, 5, 0);
-	make_request(client, nullvalue, 5, 1);
-	make_request(client, nullvalue, 5, 2);
+	make_request(client, nullvalue, -1, 0, false);
+	make_request(client, nullvalue, 5, 0, true);
+	make_request(client, nullvalue, 5, 1, true);
+	make_request(client, nullvalue, 5, 2, true);
+	make_request(client, nullvalue, 5, 3, true);
+	make_request(client, nullvalue, 5, 4, true);
 
 	std::wstring filename;
 	std::cout << "Enter a file name: ";

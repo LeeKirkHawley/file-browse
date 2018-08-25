@@ -32,18 +32,15 @@ pplx::task<http_response> make_task_request(
 {
 	wstring uri = L"/restdemo";
 		
-	//if (limit != -1)
-	{
-		// ?limit=5&start=2&sorted=1
-		uri += L"?limit=";
-		uri += std::to_wstring(limit);
-		uri += L"&start=";
-		uri += std::to_wstring(page);
-		if (sorted == true)
-			uri += L"&sorted=1";
-		else
-			uri += L"&sorted=0";
-	}
+	// ?limit=5&start=2&sorted=1
+	uri += L"?limit=";
+	uri += std::to_wstring(limit);
+	uri += L"&start=";
+	uri += std::to_wstring(page);
+	if (sorted == true)
+		uri += L"&sorted=1";
+	else
+		uri += L"&sorted=0";
 	
 	return client.request(methods::GET, uri);
 }
@@ -107,6 +104,8 @@ void make_request_file(
 	utility::string_t OutPath = U("C:\\Work\\file-browse\\returned\\");
 	OutPath.append(id);
 
+	_wremove(OutPath.c_str());
+
 	pplx::task<void> requestTask = concurrency::streams::fstream::open_ostream(OutPath)
 		.then([=](concurrency::streams::ostream stream)
 	{
@@ -114,6 +113,13 @@ void make_request_file(
 		{
 			make_task_request_file((http_client&)client, stream, id, limit, page).then([stream](http_response response)
 			{
+				status_code code = response.status_code();
+				if (code == status_codes::InternalError)
+				{
+					wcout << U("\nCouldn't transfer file.\n");
+					throw exception();
+				}
+
 				return response.body().read_to_end(stream.streambuf());
 			})
 			.then([=](size_t)  // Close the file stream.
@@ -137,7 +143,10 @@ int main()
 
 	auto nullvalue = json::value::null();
 
+	// get all files on server
 	make_request(client, nullvalue, -1, 0, false);
+
+	// get files paged
 	make_request(client, nullvalue, 5, 0, true);
 	make_request(client, nullvalue, 5, 1, true);
 	make_request(client, nullvalue, 5, 2, true);
@@ -148,8 +157,10 @@ int main()
 	std::cout << "Enter a file name: ";
 	std::getline(std::wcin, filename);
 
-	if(filename.length() > 0)
+	if (filename.length() > 0)
+	{
 		make_request_file(client, nullvalue, filename);
+	}
 
 	wcout << L"\nEnter a key, any key...";
 	std::cin.ignore();

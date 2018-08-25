@@ -63,7 +63,6 @@ pplx::task<http_response> make_task_request_file(
 
 void make_request(
 	http_client & client,
-	json::value const & jvalue,
 	int limit = -1,
 	int page = 0,
 	bool sorted = true
@@ -144,14 +143,14 @@ int main()
 	auto nullvalue = json::value::null();
 
 	// get all files on server
-	make_request(client, nullvalue, -1, 0, false);
+	make_request(client, -1, 0, false);
 
 	// get files paged
-	make_request(client, nullvalue, 5, 0, true);
-	make_request(client, nullvalue, 5, 1, true);
-	make_request(client, nullvalue, 5, 2, true);
-	make_request(client, nullvalue, 5, 3, true);
-	make_request(client, nullvalue, 5, 4, true);
+	make_request(client, 5, 0, true);
+	make_request(client, 5, 1, true);
+	make_request(client, 5, 2, true);
+	make_request(client, 5, 3, true);
+	make_request(client, 5, 4, true);
 
 	std::wstring filename;
 	std::cout << "Enter a file name: ";

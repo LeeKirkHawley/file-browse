@@ -30,7 +30,7 @@ pplx::task<http_response> make_task_request(
 	bool sorted
 	)
 {
-	wstring uri = L"/restdemo";
+	wstring uri = L"/file-browse";
 		
 	// ?limit=5&start=2&sorted=1
 	uri += L"?limit=";
@@ -53,7 +53,7 @@ pplx::task<http_response> make_task_request_file(
 	int limit = -1,
 	int page = 0)
 {
-	wstring uri = L"/restdemo";
+	wstring uri = L"/file-browse";
 
 	uri += L"/";
 	uri += id;

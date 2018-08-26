@@ -233,7 +233,7 @@ void handle_get(http_request request)
 
 int main()
 {
-	http_listener listener(L"http://localhost/restdemo");
+	http_listener listener(L"http://localhost/file-browse");
 
 	listener.support(methods::GET, handle_get);
 
